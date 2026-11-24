@@ -1,4 +1,5 @@
 import { Controller, Get, Module } from '@nestjs/common';
+import { LedgerController } from './ledger/ledger.controller';
 import { LedgerService } from './ledger/ledger.service';
 import { WebhooksController } from './webhooks/webhooks.controller';
 
@@ -15,7 +16,7 @@ class PaymentHealthController {
 }
 
 @Module({
-  controllers: [PaymentHealthController, WebhooksController],
+  controllers: [PaymentHealthController, LedgerController, WebhooksController],
   providers: [LedgerService],
 })
 export class AppModule {}

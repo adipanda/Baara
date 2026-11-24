@@ -33,6 +33,8 @@ export type UserRole =
   | 'MODERATOR'
   | 'AUDITOR';
 
+export type KycTier = 'TIER_0' | 'TIER_1' | 'TIER_2';
+
 export type PaymentProvider =
   | 'ORANGE_MONEY'
   | 'WAVE'
@@ -49,6 +51,30 @@ export interface Money {
   currency: CurrencyCode;
 }
 
+export interface JwtPayload {
+  sub: string;
+  email: string;
+  roles: UserRole[];
+  countryCode: CountryCode;
+  kycTier: KycTier;
+  iat: number;
+  exp: number;
+}
+
+export interface RegisterRequest {
+  email: string;
+  phoneE164: string;
+  password: string;
+  countryCode: CountryCode;
+  preferredCurrency?: CurrencyCode;
+  role: Extract<UserRole, 'CLIENT' | 'FREELANCER' | 'LOCAL_PROVIDER' | 'AGENCY' | 'ENTERPRISE'>;
+}
+
+export interface LoginRequest {
+  email: string;
+  password: string;
+}
+
 export interface EscrowFundRequest {
   contractId: string;
   clientId: string;
@@ -56,6 +82,13 @@ export interface EscrowFundRequest {
   amountMinor: string;
   currency: CurrencyCode;
   paymentProvider: PaymentProvider;
+  idempotencyKey: string;
+}
+
+export interface EscrowReleaseRequest {
+  contractId: string;
+  commissionBps?: number;
+  taxBps?: number;
   idempotencyKey: string;
 }
 
