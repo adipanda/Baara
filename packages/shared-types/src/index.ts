@@ -92,6 +92,39 @@ export interface EscrowReleaseRequest {
   idempotencyKey: string;
 }
 
+export interface GeoPoint {
+  lat: number;
+  lng: number;
+}
+
+export interface CreateLocalBookingRequest {
+  providerId: string;
+  categorySlug: string;
+  location: GeoPoint;
+  scheduledStartIso: string;
+  scheduledEndIso: string;
+  amountMinor: string;
+  currency: CurrencyCode;
+}
+
+export interface CreateJobRequest {
+  title: string;
+  description: string;
+  categorySlug: string;
+  vertical: ServiceVertical;
+  budgetMinMinor: string;
+  budgetMaxMinor: string;
+  currency: CurrencyCode;
+  countryCode: CountryCode;
+}
+
+export interface CreateProposalRequest {
+  amountMinor: string;
+  currency: CurrencyCode;
+  coverLetter: string;
+  deliveryDays: number;
+}
+
 export interface ProblemDetails {
   type: string;
   title: string;
