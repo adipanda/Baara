@@ -1,0 +1,18 @@
+{
+  "name": "baara-monorepo",
+  "version": "0.1.0",
+  "private": true,
+  "packageManager": "pnpm@12.21.0",
+  "scripts": {
+    "dev": "turbo run dev",
+    "build": "pnpm -r build",
+    "lint": "pnpm -r --if-present lint",
+    "typecheck": "pnpm -r typecheck",
+    "db:generate": "pnpm --filter @baara/database prisma generate",
+    "db:migrate": "pnpm --filter @baara/database prisma migrate dev"
+  },
+  "devDependencies": {
+    "turbo": "^2.5.0",
+    "typescript": "^5.7.3"
+  }
+}

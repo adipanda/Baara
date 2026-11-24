@@ -1,0 +1,241 @@
+generator client {
+  provider        = "prisma-client-js"
+  previewFeatures = ["multiSchema"]
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+  schemas  = ["identity", "marketplace", "ledger", "audit"]
+}
+
+enum UserRole {
+  CLIENT
+  FREELANCER
+  LOCAL_PROVIDER
+  AGENCY
+  ENTERPRISE
+  ADMIN
+  MODERATOR
+  AUDITOR
+
+  @@schema("identity")
+}
+
+enum KycTier {
+  TIER_0
+  TIER_1
+  TIER_2
+
+  @@schema("identity")
+}
+
+enum ProfileType {
+  DIGITAL
+  LOCAL
+  HYBRID
+  AGENCY
+
+  @@schema("marketplace")
+}
+
+enum ContractStatus {
+  DRAFT
+  ACTIVE
+  COMPLETED
+  DISPUTED
+  CANCELLED
+
+  @@schema("marketplace")
+}
+
+enum LedgerDirection {
+  DEBIT
+  CREDIT
+
+  @@schema("ledger")
+}
+
+enum PaymentProvider {
+  ORANGE_MONEY
+  WAVE
+  MOOV_MONEY
+  MTN_MOMO
+  AIRTEL_MONEY
+  SASPAY
+  STRIPE
+
+  @@schema("ledger")
+}
+
+model User {
+  id                String     @id @default(uuid())
+  email             String     @unique
+  phoneE164         String     @unique @map("phone_e164")
+  passwordHash      String     @map("password_hash")
+  countryCode       String     @map("country_code") @db.VarChar(2)
+  preferredCurrency String     @default("XOF") @map("preferred_currency") @db.VarChar(3)
+  preferredLocale   String     @default("fr") @map("preferred_locale") @db.VarChar(5)
+  kycTier           KycTier    @default(TIER_0) @map("kyc_tier")
+  trustScore        Int        @default(50) @map("trust_score")
+  mfaEnabled        Boolean    @default(false) @map("mfa_enabled")
+  roles             UserRole[]
+  createdAt         DateTime   @default(now()) @map("created_at")
+  updatedAt         DateTime   @updatedAt @map("updated_at")
+
+  profile Profile?
+  wallets Wallet[]
+
+  @@map("users")
+  @@schema("identity")
+}
+
+model Profile {
+  id             String      @id @default(uuid())
+  userId         String      @unique @map("user_id")
+  type           ProfileType
+  headline       String
+  bio            String
+  hourlyRateMinor BigInt?    @map("hourly_rate_minor")
+  currency       String      @default("XOF") @db.VarChar(3)
+  city           String?
+  countryCode    String      @map("country_code") @db.VarChar(2)
+  ratingAvg      Decimal     @default(0) @map("rating_avg") @db.Decimal(3, 2)
+  completedCount Int         @default(0) @map("completed_count")
+  isFeatured     Boolean     @default(false) @map("is_featured")
+  createdAt      DateTime    @default(now()) @map("created_at")
+
+  user User  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  gigs Gig[]
+
+  @@index([countryCode, type])
+  @@map("profiles")
+  @@schema("marketplace")
+}
+
+model Gig {
+  id           String   @id @default(uuid())
+  profileId    String   @map("profile_id")
+  categorySlug String   @map("category_slug")
+  title        String
+  slug         String   @unique
+  basePriceMinor BigInt @map("base_price_minor")
+  currency     String   @default("XOF") @db.VarChar(3)
+  deliveryDays Int      @map("delivery_days")
+  isSponsored  Boolean  @default(false) @map("is_sponsored")
+  active       Boolean  @default(true)
+  createdAt    DateTime @default(now()) @map("created_at")
+
+  profile Profile @relation(fields: [profileId], references: [id], onDelete: Cascade)
+
+  @@index([categorySlug, active])
+  @@map("gigs")
+  @@schema("marketplace")
+}
+
+model Contract {
+  id               String         @id @default(uuid())
+  clientId         String         @map("client_id")
+  providerId       String         @map("provider_id")
+  totalAmountMinor BigInt         @map("total_amount_minor")
+  platformFeeMinor BigInt         @map("platform_fee_minor")
+  taxMinor         BigInt         @default(0) @map("tax_minor")
+  currency         String         @db.VarChar(3)
+  status           ContractStatus @default(DRAFT)
+  createdAt        DateTime       @default(now()) @map("created_at")
+  updatedAt        DateTime       @updatedAt @map("updated_at")
+
+  escrow EscrowAccount?
+
+  @@index([clientId, status])
+  @@index([providerId, status])
+  @@map("contracts")
+  @@schema("marketplace")
+}
+
+model Wallet {
+  id                    String   @id @default(uuid())
+  ownerId               String   @map("owner_id")
+  currency              String   @db.VarChar(3)
+  availableBalanceMinor BigInt   @default(0) @map("available_balance_minor")
+  pendingBalanceMinor   BigInt   @default(0) @map("pending_balance_minor")
+  version               Int      @default(1)
+  updatedAt             DateTime @updatedAt @map("updated_at")
+
+  owner User @relation(fields: [ownerId], references: [id])
+
+  @@unique([ownerId, currency])
+  @@map("wallets")
+  @@schema("ledger")
+}
+
+model EscrowAccount {
+  id            String   @id @default(uuid())
+  contractId    String   @unique @map("contract_id")
+  currency      String   @db.VarChar(3)
+  fundedMinor   BigInt   @default(0) @map("funded_minor")
+  releasedMinor BigInt   @default(0) @map("released_minor")
+  refundedMinor BigInt   @default(0) @map("refunded_minor")
+  createdAt     DateTime @default(now()) @map("created_at")
+
+  contract Contract @relation(fields: [contractId], references: [id])
+
+  @@map("escrow_accounts")
+  @@schema("ledger")
+}
+
+model LedgerTransaction {
+  id             String   @id @default(uuid())
+  idempotencyKey String   @unique @map("idempotency_key")
+  type           String
+  referenceId    String   @map("reference_id")
+  createdAt      DateTime @default(now()) @map("created_at")
+
+  entries LedgerEntry[]
+
+  @@map("ledger_transactions")
+  @@schema("ledger")
+}
+
+model LedgerEntry {
+  id            String          @id @default(uuid())
+  transactionId String          @map("transaction_id")
+  accountId     String          @map("account_id")
+  direction     LedgerDirection
+  amountMinor   BigInt          @map("amount_minor")
+  currency      String          @db.VarChar(3)
+  createdAt     DateTime        @default(now()) @map("created_at")
+
+  transaction LedgerTransaction @relation(fields: [transactionId], references: [id])
+
+  @@index([accountId, createdAt])
+  @@map("ledger_entries")
+  @@schema("ledger")
+}
+
+model PaymentIntent {
+  id           String          @id @default(uuid())
+  userId       String          @map("user_id")
+  provider     PaymentProvider
+  amountMinor  BigInt          @map("amount_minor")
+  currency     String          @db.VarChar(3)
+  providerTxId String?         @map("provider_tx_id")
+  status       String          @default("PENDING")
+  createdAt    DateTime        @default(now()) @map("created_at")
+
+  @@index([provider, providerTxId])
+  @@map("payment_intents")
+  @@schema("ledger")
+}
+
+model OutboxEvent {
+  id          String    @id @default(uuid())
+  eventType   String    @map("event_type")
+  payload     Json
+  publishedAt DateTime? @map("published_at")
+  createdAt   DateTime  @default(now()) @map("created_at")
+
+  @@index([publishedAt, createdAt])
+  @@map("outbox_events")
+  @@schema("audit")
+}

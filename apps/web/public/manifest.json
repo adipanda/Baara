@@ -1,0 +1,10 @@
+{
+  "name": "AFRIWORK (Baara)",
+  "short_name": "AFRIWORK",
+  "description": "Pan-African Freelance & Local Service Marketplace",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#09090b",
+  "theme_color": "#ea580c",
+  "orientation": "portrait"
+}
